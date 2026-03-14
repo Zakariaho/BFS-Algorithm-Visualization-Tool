@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BFS & Shortest Paths</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500;600&family=Geist:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg:       #0a0a0a;
+  --surface:  #111111;
+  --surface2: #191919;
+  --surface3: #222222;
+  --line:     #2a2a2a;
+  --line2:    #333333;
+  --text:     #f0f0f0;
+  --text2:    #999999;
+  --text3:    #555555;
+  --white:    #ffffff;
+  --black:    #0a0a0a;
+  --accent-dim: rgba(255,255,255,0.06);
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Header ─── */
+.header {
+  height: 52px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 18px;
+  position: relative;
+  z-index: 10;
+}
+.header-wordmark {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--white);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.header-wordmark em { font-style: italic; color: var(--text2); }
+.header-divider { width: 1px; height: 18px; background: var(--line2); }
+.header-desc { font-size: 10px; color: var(--text3); font-family: var(--font-mono); letter-spacing: 0.02em; }
+.header-badges { margin-left: auto; display: flex; gap: 5px; }
+.badge {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.07em;
+  padding: 3px 7px; border-radius: 2px; text-transform: uppercase;
+  font-family: var(--font-mono); background: var(--surface3);
+  color: var(--text3); border: 1px solid var(--line2);
+}
+
+/* ─── Layout ─── */
+.main {
+  display: grid;
+  grid-template-columns: 378px 1fr;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+/* ─── Left Panel ─── */
+.left-panel {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.left-panel::-webkit-scrollbar { width: 3px; }
+.left-panel::-webkit-scrollbar-thumb { background: var(--line2); }
+
+.section { padding: 15px 17px; border-bottom: 1px solid var(--line); }
+.section-title {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text3);
+  font-family: var(--font-mono); margin-bottom: 11px;
+}
+
+/* Inputs */
+textarea, input[type=text] {
+  background: var(--surface2); border: 1px solid var(--line2); color: var(--text);
+  border-radius: 3px; padding: 7px 9px; font-size: 11px; font-family: var(--font-mono);
+  width: 100%; outline: none; transition: border-color 0.15s; resize: vertical;
+}
+textarea:focus, input[type=text]:focus { border-color: var(--text3); }
+textarea { min-height: 58px; }
+.input-hint { font-size: 10px; color: var(--text3); font-family: var(--font-mono); margin-top: 5px; }
+.source-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.source-row label { font-size: 10px; color: var(--text2); font-family: var(--font-mono); white-space: nowrap; }
+.source-row input { width: 52px; text-align: center; }
+
+/* Presets */
+.presets { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.preset-btn {
+  background: var(--surface2); border: 1px solid var(--line2); color: var(--text2);
+  border-radius: 3px; padding: 8px 9px; cursor: pointer; font-family: var(--font-sans);
+  text-align: left; transition: all 0.15s; line-height: 1.35;
+}
+.preset-btn:hover { border-color: var(--text3); color: var(--text); background: var(--surface3); }
+.preset-btn.active { border-color: var(--white); color: var(--white); background: var(--surface3); }
+.preset-btn strong { display: block; font-size: 11px; font-weight: 500; }
+.preset-btn span { font-size: 9px; color: var(--text3); font-family: var(--font-mono); }
+
+/* Buttons */
+.btn-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 4px; }
+.btn {
+  border: 1px solid var(--line2); border-radius: 3px; padding: 7px 4px; cursor: pointer;
+  font-size: 10px; font-weight: 500; font-family: var(--font-mono);
+  display: flex; align-items: center; justify-content: center; gap: 3px;
+  transition: all 0.15s; background: var(--surface2); color: var(--text2);
+  white-space: nowrap; letter-spacing: 0.01em;
+}
+.btn:hover:not(:disabled) { background: var(--surface3); border-color: var(--text3); color: var(--text); }
+.btn:disabled { opacity: 0.28; cursor: not-allowed; }
+.btn-primary { background: var(--white); color: var(--black); border-color: var(--white); font-weight: 600; }
+.btn-primary:hover:not(:disabled) { background: #e0e0e0; border-color: #e0e0e0; }
+.btn-danger { background: var(--surface2); border-color: var(--line2); color: var(--text3); }
+.btn-danger:hover:not(:disabled) { border-color: var(--text3); color: var(--text2); }
+
+/* Speed */
+.speed-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.speed-row label { font-size: 10px; color: var(--text3); font-family: var(--font-mono); white-space: nowrap; }
+input[type=range] { flex: 1; -webkit-appearance: none; height: 1px; background: var(--line2); border-radius: 1px; outline: none; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; background: var(--white); border-radius: 50%; cursor: pointer; }
+.speed-val { font-size: 10px; color: var(--text2); font-family: var(--font-mono); width: 30px; text-align: right; }
+
+/* Step status */
+.step-status { display: flex; gap: 7px; align-items: center; margin-top: 10px; }
+.step-counter { font-family: var(--font-mono); font-size: 10px; color: var(--text3); background: var(--surface2); border: 1px solid var(--line2); border-radius: 3px; padding: 4px 9px; white-space: nowrap; }
+.step-counter span { color: var(--text2); }
+.status-box { flex: 1; font-size: 10px; color: var(--text3); font-family: var(--font-mono); background: var(--surface2); border: 1px solid var(--line2); border-radius: 3px; padding: 4px 9px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Stats */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.stat-card { background: var(--surface2); border: 1px solid var(--line2); border-radius: 3px; padding: 10px 12px; }
+.stat-val { font-family: var(--font-mono); font-size: 22px; font-weight: 300; color: var(--white); line-height: 1; letter-spacing: -0.03em; }
+.stat-label { font-size: 9px; color: var(--text3); font-family: var(--font-mono); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Pseudocode */
+.pseudocode { background: var(--bg); border: 1px solid var(--line2); border-radius: 3px; padding: 7px; font-family: var(--font-mono); font-size: 10px; overflow-x: auto; }
+.pc-line { padding: 2px 4px; border-radius: 2px; display: flex; align-items: flex-start; gap: 8px; transition: background 0.15s; cursor: default; }
+.pc-line:hover { background: var(--surface2); }
+.pc-line.active { background: var(--surface3); }
+.pc-line.active:hover { background: var(--surface3); }
+.pc-linenum { color: var(--text3); min-width: 14px; text-align: right; user-select: none; font-size: 9px; padding-top: 1px; }
+.pc-code { color: var(--text2); white-space: pre; }
+.pc-line.active .pc-code { color: var(--text); }
+.pc-line.active .pc-linenum { color: var(--text3); }
+.kw { color: var(--text); font-weight: 500; }
+.fn { color: var(--text); }
+.cm { color: var(--text3); }
+
+/* Line hover explanation box */
+.pc-hover-box {
+  margin-top: 6px;
+  min-height: 32px;
+  background: var(--surface2);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  line-height: 1.6;
+  transition: color 0.15s;
+}
+.pc-hover-box.has-content { color: var(--text2); }
+.pc-hover-box .pc-hover-line {
+  font-size: 9px;
+  color: var(--text3);
+  margin-bottom: 3px;
+  letter-spacing: 0.04em;
+}
+.pc-hover-box .pc-hover-line span {
+  color: var(--text2);
+  font-weight: 500;
+}
+
+/* Explanation */
+.explanation-box { background: var(--surface2); border: 1px solid var(--line2); border-left: 2px solid var(--white); border-radius: 0 3px 3px 0; padding: 9px 11px; font-size: 11px; color: var(--text2); min-height: 46px; line-height: 1.65; }
+.explanation-box .highlight { color: var(--white); font-family: var(--font-mono); }
+.explanation-box .hl-node { color: var(--white); font-family: var(--font-mono); font-weight: 500; }
+.explanation-box .hl-dist { color: var(--text); font-family: var(--font-mono); }
+
+/* History */
+.history-wrap { max-height: 150px; overflow-y: auto; border: 1px solid var(--line2); border-radius: 3px; }
+.history-wrap::-webkit-scrollbar { width: 2px; }
+.history-wrap::-webkit-scrollbar-thumb { background: var(--line2); }
+.history-table { width: 100%; border-collapse: collapse; }
+.history-table th { font-size: 8px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); background: var(--surface2); padding: 5px 8px; position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--line); font-family: var(--font-mono); }
+.history-table td { padding: 4px 8px; font-size: 10px; color: var(--text3); border-bottom: 1px solid var(--line); font-family: var(--font-mono); }
+.history-table tr:hover td { background: var(--surface3); color: var(--text2); cursor: pointer; }
+.history-table tr.current-row td { color: var(--text2); background: var(--surface3); }
+
+/* ─── Right Panel ─── */
+.right-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+.tabs { display: flex; border-bottom: 1px solid var(--line); background: var(--surface); flex-shrink: 0; padding: 0 2px; }
+.tab-btn { padding: 0 14px; height: 42px; font-size: 10px; font-weight: 400; font-family: var(--font-mono); color: var(--text3); background: none; border: none; cursor: pointer; border-bottom: 1px solid transparent; transition: all 0.15s; white-space: nowrap; letter-spacing: 0.02em; margin-bottom: -1px; }
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--white); border-bottom-color: var(--white); }
+
+.tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.tab-content.active { display: flex; }
+
+/* Graph */
+.graph-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.graph-svg-wrap { flex: 1; overflow: hidden; }
+#graph-svg { width: 100%; height: 100%; display: block; }
+
+/* Legend */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 7px 15px; background: var(--surface); border-bottom: 1px solid var(--line); flex-shrink: 0; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 9px; color: var(--text3); font-family: var(--font-mono); letter-spacing: 0.03em; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-line { width: 14px; height: 1px; flex-shrink: 0; }
+
+/* Queue */
+.queue-display { background: var(--surface); border-top: 1px solid var(--line); padding: 9px 15px; flex-shrink: 0; }
+.queue-header { font-size: 9px; color: var(--text3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; }
+.queue-dir { color: var(--text3); font-size: 9px; }
+.queue-items { display: flex; gap: 4px; align-items: center; min-height: 32px; flex-wrap: wrap; }
+.queue-item { background: var(--surface3); border: 1px solid var(--line2); color: var(--text); border-radius: 2px; padding: 4px 10px; font-family: var(--font-mono); font-size: 11px; display: flex; align-items: center; gap: 5px; transition: all 0.2s; }
+.queue-item:first-child { border-color: var(--text3); }
+.queue-item .q-dist { font-size: 8px; color: var(--text3); }
+.queue-arrow { color: var(--line2); font-size: 10px; font-family: var(--font-mono); }
+.queue-empty { font-size: 10px; color: var(--text3); font-family: var(--font-mono); font-style: italic; }
+
+/* ─── Complexity Tab ─── */
+.complexity-tab { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.complexity-tab::-webkit-scrollbar { width: 3px; }
+.complexity-tab::-webkit-scrollbar-thumb { background: var(--line2); }
+.cplx-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+.cplx-card { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 13px; }
+.cplx-card h4 { font-size: 9px; font-weight: 500; color: var(--text3); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 7px; }
+.cplx-formula { font-family: var(--font-mono); font-size: 17px; font-weight: 300; color: var(--white); margin-bottom: 5px; letter-spacing: -0.01em; }
+.cplx-desc { font-size: 10px; color: var(--text3); line-height: 1.6; font-family: var(--font-mono); }
+canvas { border-radius: 3px; display: block; }
+.chart-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 14px; }
+.chart-wrap h4 { font-size: 10px; font-weight: 500; color: var(--text2); font-family: var(--font-mono); margin-bottom: 11px; letter-spacing: 0.02em; }
+.chart-legend { display: flex; gap: 14px; margin-top: 9px; flex-wrap: wrap; }
+.chart-legend-item { display: flex; align-items: center; gap: 6px; font-size: 9px; color: var(--text3); font-family: var(--font-mono); }
+.chart-legend-dot { width: 16px; height: 1px; border-radius: 1px; }
+.prose-card { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 15px; }
+.prose-card h4 { font-family: var(--font-serif); font-size: 15px; font-style: italic; color: var(--text); margin-bottom: 7px; font-weight: 400; }
+.prose-card p { font-size: 11px; color: var(--text3); line-height: 1.75; margin-bottom: 6px; }
+.prose-card ul { list-style: none; padding: 0; margin-top: 5px; }
+.prose-card ul li { font-size: 10px; color: var(--text3); padding: 2px 0 2px 12px; position: relative; font-family: var(--font-mono); }
+.prose-card ul li::before { content: '—'; position: absolute; left: 0; color: var(--text3); }
+
+/* ─── Comparison Tab ─── */
+.comparison-tab { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 11px; }
+.comparison-tab::-webkit-scrollbar { width: 3px; }
+.comparison-tab::-webkit-scrollbar-thumb { background: var(--line2); }
+.comp-header { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.comp-header h3 { font-family: var(--font-serif); font-size: 17px; font-weight: 400; font-style: italic; color: var(--text); margin-bottom: 3px; }
+.comp-header p { font-size: 10px; color: var(--text3); font-family: var(--font-mono); }
+.comp-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+.comp-card { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 13px; }
+.comp-card.highlight { border-color: var(--white); background: var(--surface2); }
+.comp-card h4 { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 2px; font-family: var(--font-mono); letter-spacing: -0.01em; }
+.comp-card .sub { font-size: 9px; color: var(--text3); font-family: var(--font-mono); margin-bottom: 9px; text-transform: uppercase; letter-spacing: 0.06em; }
+.comp-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid var(--line); }
+.comp-row:last-child { border-bottom: none; }
+.comp-row .key { font-size: 9px; color: var(--text3); font-family: var(--font-mono); }
+.comp-row .val { font-size: 9px; font-family: var(--font-mono); color: var(--text2); }
+.comp-row .val.good { color: var(--white); }
+.comp-row .val.bad { color: var(--text3); }
+.comp-row .val.ok { color: var(--text2); }
+
+/* ─── Paradigm Tab ─── */
+.paradigm-tab { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; }
+.paradigm-tab::-webkit-scrollbar { width: 3px; }
+.paradigm-tab::-webkit-scrollbar-thumb { background: var(--line2); }
+.paradigm-card { background: var(--surface); border: 1px solid var(--line); border-radius: 3px; padding: 15px; }
+.paradigm-card h4 { font-family: var(--font-serif); font-size: 15px; font-style: italic; font-weight: 400; color: var(--text); margin-bottom: 7px; }
+.paradigm-card p { font-size: 11px; color: var(--text3); line-height: 1.75; margin-bottom: 5px; }
+.paradigm-card ul { list-style: none; padding: 0; margin-top: 5px; }
+.paradigm-card ul li { font-size: 10px; color: var(--text3); font-family: var(--font-mono); padding: 2px 0 2px 13px; position: relative; }
+.paradigm-card ul li::before { content: '→'; position: absolute; left: 0; color: var(--text3); }
+.proof-block { background: var(--surface2); border: 1px solid var(--line2); border-radius: 3px; padding: 11px; margin-top: 9px; }
+.proof-block p { font-size: 10px; color: var(--text3); font-family: var(--font-mono); line-height: 1.7; margin-bottom: 5px; }
+.proof-block p:last-child { margin-bottom: 0; }
+.proof-block strong { color: var(--text2); font-weight: 500; }
+.wave-demo { display: grid; grid-template-columns: repeat(4,1fr); gap: 6px; margin-top: 11px; }
+.wave-step { background: var(--surface2); border: 1px solid var(--line2); border-radius: 3px; padding: 10px; text-align: center; }
+.wave-step .step-n { font-family: var(--font-mono); font-size: 17px; font-weight: 300; color: var(--white); letter-spacing: -0.02em; margin-bottom: 4px; }
+.wave-step .step-desc { font-size: 9px; color: var(--text3); font-family: var(--font-mono); line-height: 1.4; }
+
+/* ─── Educational footer ─── */
+.edu-section { border-top: 1px solid var(--line); background: var(--surface); flex-shrink: 0; }
+.edu-toggle { width: 100%; background: none; border: none; padding: 9px 15px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text3); font-size: 9px; font-weight: 500; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.15s; }
+.edu-toggle:hover { color: var(--text2); }
+.edu-toggle .arrow { transition: transform 0.2s; margin-left: auto; }
+.edu-toggle.open .arrow { transform: rotate(180deg); }
+.edu-content { padding: 0 15px 13px; display: none; }
+.edu-content.open { display: block; }
+.edu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.edu-card { background: var(--surface2); border: 1px solid var(--line); border-radius: 3px; padding: 10px; }
+.edu-card h5 { font-size: 9px; font-weight: 500; color: var(--text2); font-family: var(--font-mono); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.06em; }
+.edu-card p { font-size: 10px; color: var(--text3); line-height: 1.65; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-wordmark">Breadth-First Search <em>&amp; Shortest Paths</em></div>
+  <div class="header-divider"></div>
+  <div class="header-desc">Unweighted Graphs — Interactive Visualizer</div>
+  <div class="header-badges">
+    <span class="badge">CLO-1 Complexity</span>
+    <span class="badge">CLO-2 Search</span>
+    <span class="badge">CLO-3 Greedy</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ════════════ LEFT PANEL ════════════ -->
+  <div class="left-panel">
+
+    <div class="section">
+      <div class="section-title">Graph Input</div>
+      <textarea id="adj-input" placeholder="0: 1 2&#10;1: 0 3 4&#10;2: 0 5 6" rows="3"></textarea>
+      <div class="input-hint">node: neighbor1 neighbor2 ... (one per line)</div>
+      <div class="source-row">
+        <label>Source node</label>
+        <input type="text" id="source-input" value="0">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Presets</div>
+      <div class="presets">
+        <button class="preset-btn active" onclick="loadPreset(0)" id="preset-0">
+          <strong>Tree Graph</strong><span>7 nodes · BFS basics</span>
+        </button>
+        <button class="preset-btn" onclick="loadPreset(1)" id="preset-1">
+          <strong>Grid Graph</strong><span>9 nodes · level spread</span>
+        </button>
+        <button class="preset-btn" onclick="loadPreset(2)" id="preset-2">
+          <strong>Social Network</strong><span>8 nodes · cross edges</span>
+        </button>
+        <button class="preset-btn" onclick="loadPreset(3)" id="preset-3">
+          <strong>Linear Chain</strong><span>6 nodes · worst case</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Controls</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-build" onclick="buildSteps()">Build</button>
+        <button class="btn" id="btn-step" onclick="stepForward()" disabled>Step</button>
+        <button class="btn" id="btn-play" onclick="playAnimation()" disabled>Play</button>
+        <button class="btn" id="btn-pause" onclick="pauseAnimation()" disabled>Pause</button>
+        <button class="btn btn-danger" id="btn-reset" onclick="resetAll()">Reset</button>
+      </div>
+      <div class="speed-row">
+        <label>Speed</label>
+        <input type="range" id="speed-slider" min="1" max="8" value="4" step="1" oninput="updateSpeed(this.value)">
+        <span class="speed-val" id="speed-label">1×</span>
+      </div>
+      <div class="step-status">
+        <div class="step-counter">Step <span id="step-cur">0</span> / <span id="step-tot">0</span></div>
+        <div class="status-box" id="status-box">Ready — click Build</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Live Statistics</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-nodes-val">0</div>
+          <div class="stat-label">Visited</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-edges-val">0</div>
+          <div class="stat-label">Edges</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-queue-val">0</div>
+          <div class="stat-label">Queue Ops</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Pseudocode</div>
+      <div class="pseudocode">
+        <div class="pc-line" id="pc-0" data-tip="Entry point — G is the graph, source is the starting node."><span class="pc-linenum">1</span><span class="pc-code"><span class="kw">function</span> BFS(G, source):</span></div>
+        <div class="pc-line" id="pc-1" data-tip="Loop over every node in the graph to set initial state."><span class="pc-linenum">2</span><span class="pc-code">  <span class="kw">for</span> each node u in G:</span></div>
+        <div class="pc-line" id="pc-2" data-tip="WHITE = not yet discovered. Distance starts at infinity (unknown)."><span class="pc-linenum">3</span><span class="pc-code">    color[u] = WHITE; dist[u] = ∞</span></div>
+        <div class="pc-line" id="pc-3" data-tip="Mark source as GRAY (discovered). It's distance 0 from itself."><span class="pc-linenum">4</span><span class="pc-code">  color[source] = GRAY; dist[source] = 0</span></div>
+        <div class="pc-line" id="pc-4" data-tip="Push source onto the FIFO queue to kick off BFS."><span class="pc-linenum">5</span><span class="pc-code">  Q.enqueue(source)  <span class="cm">// init queue</span></span></div>
+        <div class="pc-line" id="pc-5" data-tip="Main loop — keep going as long as there are nodes left to explore."><span class="pc-linenum">6</span><span class="pc-code">  <span class="kw">while</span> Q is not empty:</span></div>
+        <div class="pc-line" id="pc-6" data-tip="Pull the front node off the queue (FIFO — oldest entry first)."><span class="pc-linenum">7</span><span class="pc-code">    u = Q.dequeue()  <span class="cm">// current</span></span></div>
+        <div class="pc-line" id="pc-7" data-tip="Visit every edge from u — each neighbor gets a chance to be discovered."><span class="pc-linenum">8</span><span class="pc-code">    <span class="kw">for</span> each neighbor v of u:</span></div>
+        <div class="pc-line" id="pc-8" data-tip="Only process v if it hasn't been seen before (still WHITE)."><span class="pc-linenum">9</span><span class="pc-code">      <span class="kw">if</span> color[v] == WHITE:</span></div>
+        <div class="pc-line" id="pc-9" data-tip="Mark v as discovered (GRAY). Its shortest distance is one more than u's."><span class="pc-linenum">10</span><span class="pc-code">        color[v] = GRAY; dist[v] = dist[u]+1</span></div>
+        <div class="pc-line" id="pc-10" data-tip="Record u as v's parent — enables shortest path reconstruction later."><span class="pc-linenum">11</span><span class="pc-code">        parent[v] = u</span></div>
+        <div class="pc-line" id="pc-12" data-tip="Add v to the back of the queue — it will be processed in future iterations."><span class="pc-linenum">12</span><span class="pc-code">        Q.enqueue(v)</span></div>
+        <div class="pc-line" id="pc-13" data-tip="All of u's neighbors are handled. Mark u BLACK — fully explored."><span class="pc-linenum">13</span><span class="pc-code">    color[u] = BLACK  <span class="cm">// done</span></span></div>
+        <div class="pc-line" id="pc-14" data-tip="Return the dist[] and parent[] arrays — shortest distances and BFS tree."><span class="pc-linenum">14</span><span class="pc-code">  <span class="kw">return</span> dist, parent</span></div>
+      </div>
+      <div class="pc-hover-box" id="pc-hover-box">Hover a line to see its explanation</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Step Explanation</div>
+      <div class="explanation-box" id="explanation-box">
+        Load a preset, then click <strong>Build</strong> to generate steps.
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">History</div>
+      <div class="history-wrap">
+        <table class="history-table">
+          <thead><tr><th>#</th><th>Action</th><th>Node</th><th>Dist</th><th>|Q|</th></tr></thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ RIGHT PANEL ════════════ -->
+  <div class="right-panel">
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('viz')">Visualization</button>
+      <button class="tab-btn" onclick="switchTab('complexity')">Complexity</button>
+      <button class="tab-btn" onclick="switchTab('comparison')">Algorithms</button>
+      <button class="tab-btn" onclick="switchTab('paradigm')">Greedy Paradigm</button>
+    </div>
+
+    <!-- Visualization tab -->
+    <div class="tab-content active" id="tab-viz">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#1e1e1e;border:1px solid #3a3a3a;"></div>Undiscovered</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e0e0e0;"></div>In Queue</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#555;"></div>Explored</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1px solid #888;"></div>Source / Current</div>
+        <div class="legend-item"><div class="legend-line" style="background:#e0e0e0;height:1px;"></div>Tree Edge</div>
+      </div>
+      <div class="graph-area">
+        <div class="graph-svg-wrap">
+          <svg id="graph-svg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <filter id="glow-soft"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            </defs>
+            <g id="edges-layer"></g>
+            <g id="nodes-layer"></g>
+            <g id="labels-layer"></g>
+          </svg>
+        </div>
+        <div class="queue-display">
+          <div class="queue-header">
+            <span>Queue</span>
+            <span class="queue-dir">← dequeue</span>
+            <span style="flex:1"></span>
+            <span class="queue-dir">enqueue →</span>
+          </div>
+          <div class="queue-items" id="queue-items">
+            <span class="queue-empty">empty</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complexity tab -->
+    <div class="tab-content" id="tab-complexity">
+      <div class="complexity-tab">
+        <div class="cplx-grid">
+          <div class="cplx-card">
+            <h4>Time</h4>
+            <div class="cplx-formula">O(V + E)</div>
+            <div class="cplx-desc">Each vertex and edge processed at most once.</div>
+          </div>
+          <div class="cplx-card">
+            <h4>Space</h4>
+            <div class="cplx-formula">O(V)</div>
+            <div class="cplx-desc">Queue, dist[], color[], parent[] all O(V).</div>
+          </div>
+          <div class="cplx-card">
+            <h4>Correctness</h4>
+            <div class="cplx-formula">Optimal</div>
+            <div class="cplx-desc">Exact shortest paths. CLRS Theorem 22.5.</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <h4>Growth Rate — Operations vs Graph Size</h4>
+          <canvas id="growth-chart" width="680" height="200"></canvas>
+          <div class="chart-legend">
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#e0e0e0;height:2px;"></div>BFS &amp; DFS: O(V+E)</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#f4a261;height:2px;"></div>Dijkstra: O((V+E) log V)</div>
+            <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#e07070;height:2px;"></div>Bellman-Ford: O(VE)</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <h4>BFS Level Distribution — Nodes per Distance</h4>
+          <canvas id="level-chart" width="680" height="140"></canvas>
+          <div id="level-chart-legend" style="font-size:9px;color:var(--text3);font-family:var(--font-mono);margin-top:7px;">Run BFS to see level distribution</div>
+        </div>
+        <div class="prose-card">
+          <h4>Why O(V + E)?</h4>
+          <p>Each vertex is enqueued exactly once when first discovered, dequeued exactly once — O(V) queue operations. Each edge is examined at most twice in an undirected graph — O(E) checks. Total: O(V + E).</p>
+          <ul>
+            <li>Dense graph (E ≈ V²): effectively O(V²)</li>
+            <li>Sparse graph (E ≈ V): effectively O(V)</li>
+            <li>Linear in the size of the graph representation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Algorithms tab -->
+    <div class="tab-content" id="tab-comparison">
+      <div class="comparison-tab">
+        <div class="comp-header">
+          <h3>Shortest Path Algorithms</h3>
+          <p>BFS is optimal for unweighted graphs. Other algorithms handle weighted or general cases at higher cost.</p>
+        </div>
+        <div class="comp-grid">
+          <div class="comp-card highlight">
+            <h4>BFS</h4><div class="sub">Breadth-First Search</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val good">O(V + E)</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val good">O(V)</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val bad">No</span></div>
+            <div class="comp-row"><span class="key">Neg weights</span><span class="val bad">No</span></div>
+            <div class="comp-row"><span class="key">Optimal</span><span class="val good">Yes (unweighted)</span></div>
+            <div class="comp-row"><span class="key">Structure</span><span class="val">Queue (FIFO)</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">Greedy by level</span></div>
+          </div>
+          <div class="comp-card">
+            <h4>DFS</h4><div class="sub">Depth-First Search</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val good">O(V + E)</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val good">O(V)</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val bad">No</span></div>
+            <div class="comp-row"><span class="key">Neg weights</span><span class="val bad">No</span></div>
+            <div class="comp-row"><span class="key">Optimal</span><span class="val bad">No (paths)</span></div>
+            <div class="comp-row"><span class="key">Structure</span><span class="val">Stack (LIFO)</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">Go deep first</span></div>
+          </div>
+          <div class="comp-card">
+            <h4>Dijkstra</h4><div class="sub">Greedy Shortest Path</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val ok">O((V+E) log V)</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val ok">O(V + E)</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Neg weights</span><span class="val bad">No</span></div>
+            <div class="comp-row"><span class="key">Optimal</span><span class="val good">Yes (non-neg)</span></div>
+            <div class="comp-row"><span class="key">Structure</span><span class="val">Min-heap (PQ)</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">Greedy by cost</span></div>
+          </div>
+        </div>
+        <div class="comp-grid">
+          <div class="comp-card">
+            <h4>Bellman-Ford</h4><div class="sub">DP Shortest Path</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val bad">O(VE)</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val good">O(V)</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Neg weights</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Neg cycles</span><span class="val good">Detects</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">Relax edges V−1×</span></div>
+          </div>
+          <div class="comp-card">
+            <h4>A*</h4><div class="sub">Informed Heuristic</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val ok">O(E) best</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val bad">O(V) worst</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Heuristic</span><span class="val good">Yes (admissible)</span></div>
+            <div class="comp-row"><span class="key">Optimal</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">f = g + h</span></div>
+          </div>
+          <div class="comp-card">
+            <h4>Floyd-Warshall</h4><div class="sub">All-Pairs SP</div>
+            <div class="comp-row"><span class="key">Time</span><span class="val bad">O(V³)</span></div>
+            <div class="comp-row"><span class="key">Space</span><span class="val bad">O(V²)</span></div>
+            <div class="comp-row"><span class="key">Weighted</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">All pairs</span><span class="val good">Yes</span></div>
+            <div class="comp-row"><span class="key">Strategy</span><span class="val">DP: k intermediate</span></div>
+          </div>
+        </div>
+        <div class="prose-card">
+          <h4>BFS vs DFS — The Critical Difference</h4>
+          <p>Same time and space complexity O(V + E), fundamentally different search order. BFS uses a FIFO queue, exploring all nodes at distance d before any at d+1 — guaranteeing shortest paths. DFS uses a LIFO stack, diving deep first. For unweighted shortest paths, always use BFS.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Greedy Paradigm tab -->
+    <div class="tab-content" id="tab-paradigm">
+      <div class="paradigm-tab">
+        <div class="paradigm-card">
+          <h4>BFS as a Greedy Algorithm</h4>
+          <p>BFS embodies the greedy paradigm: at every step, it makes the locally optimal choice — always process the node with the smallest known distance first. Because all edges have equal weight in an unweighted graph, the FIFO queue naturally enforces this. Nodes at distance d are fully processed before any at d+1.</p>
+          <ul>
+            <li>Greedy choice: always expand the closest undiscovered node</li>
+            <li>This choice is globally optimal — proven by induction</li>
+            <li>No revisiting needed — the first discovery is always optimal</li>
+            <li>Dijkstra generalizes this with a priority queue for weights</li>
+          </ul>
+        </div>
+        <div class="paradigm-card">
+          <h4>The Optimality Proof</h4>
+          <div class="proof-block">
+            <p><strong>Claim:</strong> When BFS first discovers v, dist[v] = δ(s, v) — the true shortest distance.</p>
+            <p><strong>Proof by induction.</strong> Base: dist[s] = 0 = δ(s, s). ✓ Inductive step: assume all nodes at distance &lt; k have correct dist. When u at distance k−1 is dequeued, for each white neighbor v: dist[v] = dist[u]+1 = k. No shorter path to v exists through any unprocessed node — all have distance ≥ k. So dist[v] = k = δ(s, v). ✓</p>
+            <p><strong>Key insight:</strong> The FIFO queue guarantees processing in non-decreasing distance order — exactly what the greedy proof requires.</p>
+          </div>
+        </div>
+        <div class="paradigm-card">
+          <h4>The Wave Analogy</h4>
+          <p>Think of BFS as a stone dropped in still water. The ripple expands level by level. Each level corresponds to one unit of distance from source. The wavefront (GRAY nodes) separates discovered from undiscovered territory.</p>
+          <div class="wave-demo">
+            <div class="wave-step"><div class="step-n">d=0</div><div class="step-desc">Source only — origin</div></div>
+            <div class="wave-step"><div class="step-n">d=1</div><div class="step-desc">All direct neighbors</div></div>
+            <div class="wave-step"><div class="step-n">d=2</div><div class="step-desc">Neighbors of neighbors</div></div>
+            <div class="wave-step"><div class="step-n">d=k</div><div class="step-desc">All nodes k hops away</div></div>
+          </div>
+        </div>
+        <div class="paradigm-card">
+          <h4>When Greedy BFS Fails</h4>
+          <p>BFS fails for shortest paths when edges have different weights — it treats all edges as cost 1. Dijkstra fixes this by replacing the FIFO queue with a min-heap, preserving the greedy invariant for arbitrary non-negative weights.</p>
+          <ul>
+            <li>Unweighted → BFS, O(V+E), simple queue</li>
+            <li>Non-negative weights → Dijkstra, O((V+E) log V), priority queue</li>
+            <li>Negative weights → Bellman-Ford, O(VE), DP relaxation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="edu-section">
+      <button class="edu-toggle" id="edu-toggle" onclick="toggleEdu()">
+        Key Concepts
+        <span class="arrow">▾</span>
+      </button>
+      <div class="edu-content" id="edu-content">
+        <div class="edu-grid">
+          <div class="edu-card">
+            <h5>BFS Tree</h5>
+            <p>Highlighted edges form a BFS spanning tree rooted at source. Each tree edge (u,v) means u discovered v. Path to any node: follow parent pointers.</p>
+          </div>
+          <div class="edu-card">
+            <h5>FIFO Queue Invariant</h5>
+            <p>The queue always holds distances [d, d+1]. Nodes at d are processed before d+1. This is why BFS finds shortest paths.</p>
+          </div>
+          <div class="edu-card">
+            <h5>Gray vs Black</h5>
+            <p>GRAY = frontier — discovered, neighbors not yet explored. BLACK = fully done. WHITE = undiscovered. Three colors enable cycle detection (CLRS).</p>
+          </div>
+          <div class="edu-card">
+            <h5>Disconnected Graphs</h5>
+            <p>BFS only reaches the same connected component as source. For disconnected graphs, run BFS once per unvisited component.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// PRESETS
+// ═══════════════════════════════════════════════════════
+const PRESETS = [
+  { name:"Tree Graph", source:0,
+    adj:{0:[1,2],1:[0,3,4],2:[0,5,6],3:[1],4:[1],5:[2],6:[2]},
+    positions:{0:{x:400,y:60},1:{x:220,y:160},2:{x:580,y:160},3:{x:120,y:280},4:{x:320,y:280},5:{x:480,y:280},6:{x:680,y:280}}
+  },
+  { name:"Grid Graph", source:4,
+    adj:{0:[1,3],1:[0,2,4],2:[1,5],3:[0,4,6],4:[1,3,5,7],5:[2,4,8],6:[3,7],7:[4,6,8],8:[5,7]},
+    positions:{0:{x:180,y:80},1:{x:400,y:80},2:{x:620,y:80},3:{x:180,y:200},4:{x:400,y:200},5:{x:620,y:200},6:{x:180,y:320},7:{x:400,y:320},8:{x:620,y:320}}
+  },
+  { name:"Social Network", source:0,
+    adj:{0:[1,2,3],1:[0,2,4],2:[0,1,5],3:[0,4,6],4:[1,3,7],5:[2,6,7],6:[3,5],7:[4,5]},
+    positions:{0:{x:400,y:60},1:{x:200,y:140},2:{x:600,y:140},3:{x:120,y:280},4:{x:310,y:300},5:{x:490,y:300},6:{x:230,y:380},7:{x:580,y:360}}
+  },
+  { name:"Linear Chain", source:0,
+    adj:{0:[1],1:[0,2],2:[1,3],3:[2,4],4:[3,5],5:[4]},
+    positions:{0:{x:80,y:200},1:{x:210,y:200},2:{x:340,y:200},3:{x:470,y:200},4:{x:600,y:200},5:{x:720,y:200}}
+  }
+];
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+let graph={}, nodePositions={}, bfsSteps=[], currentStep=-1;
+let playing=false, playTimer=null, speedMs=600, currentPreset=0;
+
+// ═══════════════════════════════════════════════════════
+// LOAD PRESET
+// ═══════════════════════════════════════════════════════
+function loadPreset(idx) {
+  currentPreset=idx;
+  document.querySelectorAll('.preset-btn').forEach((b,i)=>b.classList.toggle('active',i===idx));
+  const p=PRESETS[idx];
+  graph=JSON.parse(JSON.stringify(p.adj));
+  nodePositions=JSON.parse(JSON.stringify(p.positions));
+  document.getElementById('source-input').value=p.source;
+  document.getElementById('adj-input').value=Object.keys(p.adj).map(k=>`${k}: ${p.adj[k].join(' ')}`).join('\n');
+  resetAll(false); renderGraph();
+}
+
+function parseCustomGraph() {
+  const src=document.getElementById('adj-input').value.trim();
+  if(!src) return false;
+  const adj={};
+  src.split('\n').forEach(line=>{
+    line=line.trim(); if(!line) return;
+    const m=line.match(/^(\d+)\s*:\s*(.*)/);
+    if(m){ const u=parseInt(m[1]); adj[u]=m[2].trim()?m[2].trim().split(/\s+/).map(Number):[]; }
+  });
+  if(!Object.keys(adj).length) return false;
+  graph=adj;
+  const nodes=Object.keys(adj).map(Number);
+  const cx=400,cy=200,r=150; nodePositions={};
+  nodes.forEach((n,i)=>{ const a=(2*Math.PI*i/nodes.length)-Math.PI/2; nodePositions[n]={x:cx+r*Math.cos(a),y:cy+r*Math.sin(a)}; });
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════
+// BFS STEP GENERATION
+// ═══════════════════════════════════════════════════════
+function generateBFSSteps(g, source) {
+  const steps=[], nodes=Object.keys(g).map(Number);
+  const color={},dist={},parent={};
+  nodes.forEach(n=>{color[n]='WHITE';dist[n]=Infinity;parent[n]=null;});
+  let nv=0,ee=0,qo=0; const te=new Set();
+  function snap(pcLine,explanation,queue,current=null,activeEdge=null){
+    steps.push({pcLine,explanation,color:{...color},dist:{...dist},parent:{...parent},
+      queue:[...queue],current,activeEdge,treeEdges:new Set(te),nodesVisited:nv,edgesExplored:ee,queueOps:qo});
+  }
+  snap(1,'Initialize all nodes to undiscovered (WHITE) with distance ∞.',[],null,null);
+  color[source]='GRAY';dist[source]=0;nv++;
+  snap(3,`Set source <span class="hl-node">${source}</span> as GRAY. dist = <span class="hl-dist">0</span>.`,[],source,null);
+  const queue=[source];qo++;
+  snap(4,`Enqueue source <span class="hl-node">${source}</span>. Queue: [${queue.join(', ')}].`,queue,source,null);
+  while(queue.length>0){
+    snap(5,`Queue has <span class="highlight">${queue.length}</span> node(s). Continue BFS.`,queue,null,null);
+    const u=queue.shift();qo++;
+    snap(6,`Dequeue <span class="hl-node">${u}</span>. dist[<span class="hl-node">${u}</span>] = <span class="hl-dist">${dist[u]}</span>.`,queue,u,null);
+    const nbrs=g[u]||[];
+    snap(7,`Exploring neighbors of <span class="hl-node">${u}</span>: [${nbrs.join(', ')}].`,queue,u,null);
+    for(const v of nbrs){
+      ee++;
+      snap(8,`Checking <span class="hl-node">${v}</span>. Color = <span class="highlight">${color[v]}</span>.`,queue,u,[u,v]);
+      if(color[v]==='WHITE'){
+        color[v]='GRAY';dist[v]=dist[u]+1;parent[v]=u;nv++;
+        te.add(`${Math.min(u,v)}-${Math.max(u,v)}`);
+        snap(9,`<span class="hl-node">${v}</span> is WHITE. dist = <span class="hl-dist">${dist[v]}</span>, parent = <span class="hl-node">${u}</span>.`,queue,u,[u,v]);
+        queue.push(v);qo++;
+        snap(12,`Enqueue <span class="hl-node">${v}</span> (d=<span class="hl-dist">${dist[v]}</span>). Queue: [${queue.join(', ')}].`,queue,u,[u,v]);
+      } else {
+        snap(8,`<span class="hl-node">${v}</span> is <span class="highlight">${color[v]}</span> — skip (d=<span class="hl-dist">${dist[v]}</span>).`,queue,u,[u,v]);
+      }
+    }
+    color[u]='BLACK';
+    snap(13,`All neighbors done. Mark <span class="hl-node">${u}</span> as BLACK.`,queue,null,null);
+  }
+  snap(14,`BFS complete. Visited <span class="highlight">${nv}</span> nodes from source <span class="hl-node">${source}</span>`.replace('hl-node','hl-node'),[],null,null);
+  return steps;
+}
+
+// ═══════════════════════════════════════════════════════
+// SVG RENDERING
+// ═══════════════════════════════════════════════════════
+function renderGraph(step=null){
+  const el=document.getElementById('edges-layer'),nl=document.getElementById('nodes-layer'),ll=document.getElementById('labels-layer');
+  el.innerHTML='';nl.innerHTML='';ll.innerHTML='';
+  const nodes=Object.keys(graph).map(Number);
+  if(!nodes.length) return;
+  const pos=nodePositions, source=parseInt(document.getElementById('source-input').value)||0;
+  const svgW=800,svgH=400,margin=52;
+  const xs=nodes.map(n=>pos[n].x),ys=nodes.map(n=>pos[n].y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys);
+  const scaleX=maxX>minX?(svgW-2*margin)/(maxX-minX):1;
+  const scaleY=maxY>minY?(svgH-2*margin)/(maxY-minY):1;
+  const scale=Math.min(scaleX,scaleY,1.2);
+  const offX=(svgW-(maxX-minX)*scale)/2-minX*scale;
+  const offY=(svgH-(maxY-minY)*scale)/2-minY*scale;
+  const tx=n=>pos[n].x*scale+offX, ty=n=>pos[n].y*scale+offY;
+
+  const drawn=new Set();
+  nodes.forEach(u=>{
+    (graph[u]||[]).forEach(v=>{
+      const ekey=`${Math.min(u,v)}-${Math.max(u,v)}`;
+      if(drawn.has(ekey)) return; drawn.add(ekey);
+      const isTree=step&&step.treeEdges.has(ekey);
+      const isActive=step&&step.activeEdge&&((step.activeEdge[0]===u&&step.activeEdge[1]===v)||(step.activeEdge[0]===v&&step.activeEdge[1]===u));
+      const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+      line.setAttribute('x1',tx(u));line.setAttribute('y1',ty(u));
+      line.setAttribute('x2',tx(v));line.setAttribute('y2',ty(v));
+      line.setAttribute('stroke',isActive?'#777':isTree?'#d0d0d0':'#2a2a2a');
+      line.setAttribute('stroke-width',isActive?2:isTree?1.5:1);
+      el.appendChild(line);
+    });
+  });
+
+  const R=20;
+  nodes.forEach(n=>{
+    let fill='#1e1e1e',textFill='#444',strokeC='none',strokeW=0;
+    let dl='∞';
+    if(step){
+      const c=step.color[n],d=step.dist[n];
+      dl=d===Infinity?'∞':d;
+      if(step.current===n){fill='#ffffff';textFill='#000';strokeC='#888';strokeW=1.5;}
+      else if(c==='GRAY'){fill='#d8d8d8';textFill='#111';}
+      else if(c==='BLACK'){fill='#484848';textFill='#aaa';}
+      else{fill='#1e1e1e';textFill='#3a3a3a';}
+      if(n===source&&step.current!==n){strokeC='#666';strokeW=1.5;}
+    } else {
+      if(n===source){fill='#fff';textFill='#000';}
+    }
+    if(step&&step.current===n){
+      const ring=document.createElementNS('http://www.w3.org/2000/svg','circle');
+      ring.setAttribute('cx',tx(n));ring.setAttribute('cy',ty(n));
+      ring.setAttribute('r',R+7);ring.setAttribute('fill','none');
+      ring.setAttribute('stroke','#333');ring.setAttribute('stroke-width','1');
+      nl.appendChild(ring);
+    }
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',tx(n));circle.setAttribute('cy',ty(n));
+    circle.setAttribute('r',R);circle.setAttribute('fill',fill);
+    if(strokeC!=='none'){circle.setAttribute('stroke',strokeC);circle.setAttribute('stroke-width',strokeW);}
+    nl.appendChild(circle);
+    const label=document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x',tx(n));label.setAttribute('y',ty(n)+5);
+    label.setAttribute('text-anchor','middle');label.setAttribute('fill',textFill);
+    label.setAttribute('font-size','11');label.setAttribute('font-weight','400');
+    label.setAttribute('font-family','Geist Mono,monospace');
+    label.textContent=n; nl.appendChild(label);
+    if(step){
+      const dl2=document.createElementNS('http://www.w3.org/2000/svg','text');
+      dl2.setAttribute('x',tx(n));dl2.setAttribute('y',ty(n)-R-5);
+      dl2.setAttribute('text-anchor','middle');
+      dl2.setAttribute('fill',step.dist[n]===Infinity?'#2e2e2e':'#666');
+      dl2.setAttribute('font-size','9');dl2.setAttribute('font-family','Geist Mono,monospace');
+      dl2.textContent=`d=${dl}`; ll.appendChild(dl2);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// QUEUE
+// ═══════════════════════════════════════════════════════
+function renderQueue(queue,step){
+  const el=document.getElementById('queue-items');
+  if(!queue||!queue.length){el.innerHTML='<span class="queue-empty">empty</span>';return;}
+  el.innerHTML='';
+  queue.forEach((node,i)=>{
+    const item=document.createElement('div');item.className='queue-item';
+    const d=step&&step.dist[node]!==undefined?step.dist[node]:'?';
+    item.innerHTML=`${node}<span class="q-dist">d=${d}</span>`;
+    el.appendChild(item);
+    if(i<queue.length-1){const a=document.createElement('span');a.className='queue-arrow';a.textContent='→';el.appendChild(a);}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// PSEUDOCODE
+// ═══════════════════════════════════════════════════════
+const PC_MAP={1:'pc-1',2:'pc-2',3:'pc-3',4:'pc-4',5:'pc-5',6:'pc-6',7:'pc-7',8:'pc-8',9:'pc-9',12:'pc-12',13:'pc-13',14:'pc-14'};
+function highlightPC(line){
+  document.querySelectorAll('.pc-line').forEach(el=>el.classList.remove('active'));
+  const id=PC_MAP[line]; if(id) document.getElementById(id)?.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════
+const historyRows=[];
+function addHistoryRow(stepIdx,step){
+  const action=step.current!==null?(step.pcLine===6?'Dequeue':step.pcLine===12?'Enqueue':'Process'):(step.pcLine===5?'Check Q':step.pcLine===13?'→ BLACK':'Init');
+  historyRows.push({stepIdx,action,node:step.current??'-',dist:step.current!==null&&step.dist[step.current]!==undefined&&step.dist[step.current]!==Infinity?step.dist[step.current]:'-',qSize:step.queue.length});
+}
+function renderHistoryTable(currentIdx){
+  const tbody=document.getElementById('history-body');
+  tbody.innerHTML=historyRows.slice(-28).map(r=>`<tr class="${r.stepIdx===currentIdx?'current-row':''}" onclick="jumpToStep(${r.stepIdx})"><td>${r.stepIdx}</td><td>${r.action}</td><td>${r.node}</td><td>${r.dist}</td><td>${r.qSize}</td></tr>`).join('');
+  const hw=document.querySelector('.history-wrap'); hw.scrollTop=hw.scrollHeight;
+}
+function jumpToStep(idx){if(idx<0||idx>=bfsSteps.length)return;currentStep=idx;applyStep(bfsSteps[idx]);}
+
+// ═══════════════════════════════════════════════════════
+// APPLY STEP
+// ═══════════════════════════════════════════════════════
+function applyStep(step){
+  renderGraph(step);renderQueue(step.queue,step);highlightPC(step.pcLine);
+  document.getElementById('explanation-box').innerHTML=step.explanation;
+  document.getElementById('step-cur').textContent=currentStep+1;
+  document.getElementById('stat-nodes-val').textContent=step.nodesVisited;
+  document.getElementById('stat-edges-val').textContent=step.edgesExplored;
+  document.getElementById('stat-queue-val').textContent=step.queueOps;
+  const s=document.getElementById('status-box');
+  if(step.current!==null) s.textContent=`Processing ${step.current} (d=${step.dist[step.current]})`;
+  else if(step.queue.length>0) s.textContent=`Queue: ${step.queue.length}`;
+  else s.textContent=step.pcLine===14?'Complete ✓':'Running...';
+  addHistoryRow(currentStep,step);renderHistoryTable(currentStep);
+  if(document.getElementById('tab-complexity').classList.contains('active')) drawLevelChart(step);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════
+function buildSteps(){
+  const src=parseInt(document.getElementById('source-input').value)||0;
+  if(document.getElementById('adj-input').value.trim()&&!Object.keys(graph).length) parseCustomGraph();
+  bfsSteps=generateBFSSteps(graph,src);currentStep=-1;historyRows.length=0;
+  document.getElementById('step-tot').textContent=bfsSteps.length;
+  document.getElementById('step-cur').textContent=0;
+  setControlState(true);
+  document.getElementById('status-box').textContent=`${bfsSteps.length} steps — Step or Play`;
+  renderGraph();renderQueue([],null);drawGrowthChart();
+}
+function stepForward(){if(currentStep>=bfsSteps.length-1)return;currentStep++;applyStep(bfsSteps[currentStep]);updateStepButtons();}
+function playAnimation(){if(playing)return;playing=true;document.getElementById('btn-play').disabled=true;document.getElementById('btn-pause').disabled=false;scheduleNext();}
+function scheduleNext(){if(!playing)return;if(currentStep>=bfsSteps.length-1){pauseAnimation();return;}stepForward();playTimer=setTimeout(scheduleNext,speedMs);}
+function pauseAnimation(){playing=false;clearTimeout(playTimer);document.getElementById('btn-play').disabled=false;document.getElementById('btn-pause').disabled=true;}
+function resetAll(rebuild=true){
+  pauseAnimation();bfsSteps=[];currentStep=-1;historyRows.length=0;
+  ['step-cur','step-tot','stat-nodes-val','stat-edges-val','stat-queue-val'].forEach(id=>document.getElementById(id).textContent=0);
+  document.getElementById('status-box').textContent='Ready — click Build';
+  document.getElementById('explanation-box').innerHTML='Load a preset, then click <strong>Build</strong> to generate steps.';
+  document.getElementById('history-body').innerHTML='';
+  document.getElementById('queue-items').innerHTML='<span class="queue-empty">empty</span>';
+  document.querySelectorAll('.pc-line').forEach(el=>el.classList.remove('active'));
+  setControlState(false);if(rebuild)renderGraph();
+}
+function setControlState(built){document.getElementById('btn-step').disabled=!built;document.getElementById('btn-play').disabled=!built;document.getElementById('btn-pause').disabled=true;}
+function updateStepButtons(){document.getElementById('btn-step').disabled=currentStep>=bfsSteps.length-1;}
+function updateSpeed(val){
+  const s=[4000,2000,1200,800,500,300,150,80],l=['0.25×','0.5×','0.75×','1×','1.5×','2×','3×','4×'];
+  speedMs=s[val-1];document.getElementById('speed-label').textContent=l[val-1];
+}
+
+// ═══════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['viz','complexity','comparison','paradigm'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='complexity'){drawGrowthChart();if(currentStep>=0)drawLevelChart(bfsSteps[currentStep]);}
+}
+function toggleEdu(){
+  const c=document.getElementById('edu-content'),t=document.getElementById('edu-toggle');
+  const o=c.classList.toggle('open');t.classList.toggle('open',o);
+}
+
+// ═══════════════════════════════════════════════════════
+// GROWTH CHART
+// ═══════════════════════════════════════════════════════
+function drawGrowthChart(){
+  const canvas=document.getElementById('growth-chart');if(!canvas)return;
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  const pad={l:46,r:16,t:10,b:36},plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+  const maxN=80,maxOps=maxN*maxN*1.2;
+  ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#1e1e1e';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const y=pad.t+(i/4)*plotH;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+plotW,y);ctx.stroke();
+    ctx.fillStyle='#3a3a3a';ctx.font='9px Geist Mono,monospace';ctx.textAlign='right';
+    ctx.fillText(Math.round(maxOps*(1-i/4)),pad.l-4,y+3);
+    const x=pad.l+(i/4)*plotW;
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+plotH);ctx.stroke();
+    ctx.fillStyle='#3a3a3a';ctx.textAlign='center';
+    ctx.fillText(`n=${Math.round(maxN*i/4)}`,x,H-4);
+  }
+  function plotLine(fn,color){
+    ctx.strokeStyle=color;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();
+    for(let n=2;n<=maxN;n++){
+      const ops=fn(n),x=pad.l+(n/maxN)*plotW,y=pad.t+plotH-Math.min(ops/maxOps,1)*plotH;
+      if(n===2)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  // Draw back-to-front so BFS/DFS both visible
+  plotLine(n=>n*2*n,'#e07070');                    // Bellman-Ford O(VE) — red
+  plotLine(n=>(n+2*n)*Math.log2(n+1),'#f4a261');  // Dijkstra O((V+E)logV) — amber
+  plotLine(n=>n+2*n,'#e0e0e0');                    // BFS & DFS O(V+E) — white
+}
+
+// ═══════════════════════════════════════════════════════
+// LEVEL CHART
+// ═══════════════════════════════════════════════════════
+function drawLevelChart(step){
+  const canvas=document.getElementById('level-chart');if(!canvas||!step)return;
+  const ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#111';ctx.fillRect(0,0,W,H);
+  const levels={};
+  Object.entries(step.dist).forEach(([n,d])=>{if(d!==Infinity)levels[d]=(levels[d]||0)+1;});
+  const keys=Object.keys(levels).map(Number);
+  if(!keys.length){ctx.fillStyle='#3a3a3a';ctx.font='10px Geist,sans-serif';ctx.textAlign='center';ctx.fillText('Run BFS to see level distribution',W/2,H/2);return;}
+  const maxLevel=Math.max(...keys),maxCount=Math.max(...Object.values(levels),1);
+  const pad={l:34,r:14,t:10,b:26},plotH=H-pad.t-pad.b;
+  const slotW=(W-pad.l-pad.r)/(maxLevel+1),barW=Math.min(44,slotW-8);
+  for(let d=0;d<=maxLevel;d++){
+    const count=levels[d]||0,barH=(count/maxCount)*plotH;
+    const x=pad.l+d*slotW+slotW/2-barW/2,y=pad.t+plotH-barH;
+    ctx.fillStyle=count>0?'#d0d0d0':'#222';
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(x,y,barW,Math.max(barH,1),2);
+    else ctx.rect(x,y,barW,Math.max(barH,1));
+    ctx.fill();
+    ctx.fillStyle='#444';ctx.font='9px Geist Mono,monospace';ctx.textAlign='center';
+    ctx.fillText(`d=${d}`,x+barW/2,H-3);
+    if(count>0){ctx.fillStyle='#777';ctx.fillText(count,x+barW/2,y-3);}
+  }
+  const total=Object.values(levels).reduce((a,b)=>a+b,0);
+  document.getElementById('level-chart-legend').textContent=`${total} node(s) discovered across ${maxLevel+1} level(s)`;
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.getElementById('adj-input').addEventListener('input',()=>{
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+});
+
+// ═══════════════════════════════════════════════════════
+// PSEUDOCODE HOVER BOX
+// ═══════════════════════════════════════════════════════
+(function() {
+  const hoverBox = document.getElementById('pc-hover-box');
+  document.querySelectorAll('.pc-line[data-tip]').forEach(line => {
+    line.addEventListener('mouseenter', () => {
+      const lineNum = line.querySelector('.pc-linenum').textContent;
+      const tip = line.getAttribute('data-tip');
+      hoverBox.innerHTML = `<div class="pc-hover-line">Line <span>${lineNum}</span></div>${tip}`;
+      hoverBox.classList.add('has-content');
+    });
+    line.addEventListener('mouseleave', () => {
+      hoverBox.innerHTML = 'Hover a line to see its explanation';
+      hoverBox.classList.remove('has-content');
+    });
+  });
+})();
+
+loadPreset(0);
+drawGrowthChart();
+</script>
+</body>
+</html>
