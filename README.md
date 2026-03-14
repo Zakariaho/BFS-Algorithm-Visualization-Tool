@@ -1,2 +1,2 @@
 This tool is live at:
-zakariaho.github.io
+[zakariaho.github.io](https://zakariaho.github.io/BFS-Algorithm-Visualization-Tool/)
